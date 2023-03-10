@@ -10,25 +10,7 @@ warnings.filterwarnings('ignore', '.*truncated to dtype int32.*')
 
 
 class ModelWrapper:
-    def __init__(self, logdir, task):
-
-        # See configs.yaml for all options.
-        config = embodied.Config(dreamerv3.configs['defaults'])
-        config = config.update(dreamerv3.configs['medium'])
-        config = config.update({
-            'logdir': logdir,
-            'run.train_ratio': 64,
-            'run.log_every': 30,  # Seconds
-            'batch_size': 16,
-            'jax.prealloc': False,
-            'encoder.mlp_keys': '$^',
-            'decoder.mlp_keys': '$^',
-            'encoder.cnn_keys': 'image',
-            'decoder.cnn_keys': 'image',
-            # 'jax.platform': 'cpu',
-        })
-        config = embodied.Flags(config).parse(argv=[])
-
+    def __init__(self, logdir, task, config, env_only=False, agent_policy=False):
         logdir = embodied.Path(config.logdir)
         step = embodied.Counter()
         logger = embodied.Logger(step, [
@@ -98,9 +80,12 @@ class ModelWrapper:
 
         self.steps = 0
         self.use_env = True
+
+        self.env_only = env_only
+        self.agent_policy = agent_policy
                 
     #agent_policy is only available if using the env
-    def step(self, action, env_only = False, agent_policy = False):
+    def step(self, action):
         action = np.array([action])
         self.steps += 1
         if self.steps > 10:
@@ -114,12 +99,12 @@ class ModelWrapper:
         rng = self.agent._next_rngs(self.agent.policy_devices)
         varibs = self.agent.varibs if self.agent.single_device else self.agent.policy_varibs
 
-        if self.use_env or env_only:
-            if agent_policy:
+        if self.use_env or self.env_only:
+            if self.agent_policy:
                 outputs, self.input_state = self.agent.policy(self.obs, self.input_state, mode="eval")
                 action = outputs['action']
             self.obs = self.env.step({"action": action, "reset": [False]})
-            if env_only: #Just using the wrapper to run the env
+            if self.env_only: #Just using the wrapper to run the env
                 return self.obs["image"][0]
             obs_jax = self.agent._convert_inps(self.obs, self.agent.policy_devices)
             

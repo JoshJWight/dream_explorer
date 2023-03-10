@@ -13,7 +13,7 @@ import wrapper
 import task_helpers
 
 class GameWindow(Gtk.Window):
-    def __init__(self, task, logdir):
+    def __init__(self, task, mywrapper):
         Gtk.Window.__init__(self, title="Game Window")
         self.set_default_size(800, 600)
         self.set_border_width(10)
@@ -34,16 +34,15 @@ class GameWindow(Gtk.Window):
 
         self.task = task
         
-        self.wrapper = wrapper.ModelWrapper(logdir, self.task)
+        self.wrapper = mywrapper
         GObject.timeout_add(50, self.update)
-
-        self.action_idx = 0
 
         self.key_map = task_helpers.empty_key_map()
 
     def update(self):
         action = task_helpers.action_for_task(self.task, self.key_map)
-        source_image = self.wrapper.step(action, env_only=False, agent_policy=False)
+        print(action)
+        source_image = self.wrapper.step(action)
         h, w, c = source_image.shape
 
         image = GdkPixbuf.Pixbuf.new_from_bytes(GLib.Bytes(source_image.tobytes()), GdkPixbuf.Colorspace.RGB, False, 8, w, h, w * c)
