@@ -32,6 +32,24 @@ class GameWindow(Gtk.Window):
         self.image.set_from_pixbuf(image)
         self.box.pack_start(self.image, True, True, 0)
 
+        self.widget_box = Gtk.VBox()
+        self.box.pack_start(self.widget_box, True, True, 0)
+
+        #Reset button
+        self.button = Gtk.Button(label="Reset")
+        self.button.connect("clicked", self.on_reset_clicked)
+        self.widget_box.pack_start(self.button, True, True, 0)
+
+        #Framerate slider
+        self.framerate_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 1000, 1)
+        self.framerate_slider.set_value(50)
+        self.widget_box.pack_start(self.framerate_slider, True, True, 0)
+
+        #Agent policy checkbox
+        self.agent_policy_checkbox = Gtk.CheckButton(label="Agent Policy")
+        self.agent_policy_checkbox.connect("toggled", self.on_agent_policy_toggled)
+        self.widget_box.pack_start(self.agent_policy_checkbox, True, True, 0)
+
         self.task = task
         
         self.wrapper = mywrapper
@@ -41,14 +59,17 @@ class GameWindow(Gtk.Window):
 
     def update(self):
         action = task_helpers.action_for_task(self.task, self.key_map)
-        print(action)
+        #print(action)
         source_image = self.wrapper.step(action)
         h, w, c = source_image.shape
 
         image = GdkPixbuf.Pixbuf.new_from_bytes(GLib.Bytes(source_image.tobytes()), GdkPixbuf.Colorspace.RGB, False, 8, w, h, w * c)
         image = image.scale_simple(500, 500, GdkPixbuf.InterpType.BILINEAR)
         self.image.set_from_pixbuf(image)
-        GObject.timeout_add(50, self.update)
+        
+        delay = 1000 / self.framerate_slider.get_value()
+
+        GObject.timeout_add(delay, self.update)
 
     
     def on_key_press_event(self, widget, event):
@@ -59,16 +80,11 @@ class GameWindow(Gtk.Window):
         keyname = Gdk.keyval_name(event.keyval)
         self.key_map[keyname] = False
 
+    def on_reset_clicked(self, widget):
+        self.wrapper.reset()
+
+    def on_agent_policy_toggled(self, widget):
+        self.wrapper.agent_policy = self.agent_policy_checkbox.get_active()
 
 if __name__ == "__main__":
-    #task = "crafter"
-    #logdir = "~/logdir/run1"
-    #task = "mspacman"
-    #logdir = "~/logdir/pacman_dreamerv3/1"
-    task = "skiing"
-    logdir = "~/logdir/skiing_dreamerv3/1"
-
-    win = GameWindow(task, logdir)
-    win.connect("delete-event", Gtk.main_quit)
-    win.show_all()
-    Gtk.main()
+    print("DON'T RUN THIS FILE DIRECTLY!")

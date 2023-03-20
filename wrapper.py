@@ -11,8 +11,10 @@ warnings.filterwarnings('ignore', '.*truncated to dtype int32.*')
 
 class ModelWrapper:
     def __init__(self, logdir, task, config, env_only=False, agent_policy=False):
+        self.task = task
         logdir = embodied.Path(config.logdir)
         step = embodied.Counter()
+        #TODO part or all of this could be removed
         logger = embodied.Logger(step, [
             embodied.logger.TerminalOutput(),
             embodied.logger.JSONLOutput(logdir, 'metrics.jsonl'),
@@ -76,13 +78,19 @@ class ModelWrapper:
 
         self.input_state = None
 
-        self.obs = self.env.step({"action": [task_helpers.action_for_task(task, task_helpers.empty_key_map())], "reset": [True]})
+        self.obs = self.env.step({"action": [task_helpers.action_for_task(self.task, task_helpers.empty_key_map())], "reset": [True]})
 
         self.steps = 0
         self.use_env = True
 
         self.env_only = env_only
         self.agent_policy = agent_policy
+
+    def reset(self):
+        self.obs = self.env.step({"action": [task_helpers.action_for_task(self.task, task_helpers.empty_key_map())], "reset": [True]})
+        self.input_state = None
+        self.use_env = True
+        self.steps = 0
                 
     #agent_policy is only available if using the env
     def step(self, action):
@@ -104,37 +112,21 @@ class ModelWrapper:
                 outputs, self.input_state = self.agent.policy(self.obs, self.input_state, mode="eval")
                 action = outputs['action']
             self.obs = self.env.step({"action": action, "reset": [False]})
+            reward = self.obs['reward'][0]
+            if not reward == 0.0:
+                print(f"Reward {self.obs['reward'][0]}")
+            if self.obs['is_terminal'][0]:
+                print("Terminal!")
             if self.env_only: #Just using the wrapper to run the env
                 return self.obs["image"][0]
             obs_jax = self.agent._convert_inps(self.obs, self.agent.policy_devices)
             
             results, _ = self._env_step(varibs, rng, obs_jax, state_jax, action_jax)
-            
-            
-            #data = {"action": np.asarray([[action]]), "image": np.asarray([[self.obs["image"]]]), "is_first": np.asarray([[self.obs["is_first"]]])}
-            #embed = self.agent.agent.wm.encoder(data)
-
-            #states, _ = self.agent.agent.wm.rssm.observe(embed, data['action'], data['is_first'], self.input_state)
         else:
-            #data = {"action": np.asarray([[action]])}
-            #states = self.agent.agent.wm.rssm.imagine(data['action'], self.input_state)
             results, _ = self._imag_step(varibs, rng, state_jax, action_jax)
 
         self.input_state = self.agent._convert_outs(results[0], self.agent.policy_devices)
         img = self.agent._convert_outs(results[1], self.agent.policy_devices)
-
-        #plt.imshow(img["image"][0])
-
-        #self.input_state = {k: v[:, -1] for k, v in states.items()}
-        #decoder = self.agent.agent.wm.heads['decoder']
-        #recon = decoder(self.agent.agent.wm.rssm.get_feat(states))["image"].mode()
-
-        #recon_np = recon[0][0].numpy()
-        #h, w, _ = recon_np.shape
-        #stack 3 copies together
-        #result = np.zeros((h, w, 3), dtype=np.uint8)
-        #for i in range(3):
-        #    result[:, :, i] = (recon_np[:, :, 0] + 0.5) * 255
 
         image = img["image"][0]
         image = np.clip(image, 0, 1)
