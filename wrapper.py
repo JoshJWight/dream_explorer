@@ -53,11 +53,15 @@ class ModelWrapper:
             context, _ = self.wm.rssm.obs_step(
                 state, action, embed, obs['is_first'])
             #latentb = {k: jnp.expand_dims(v, 0) for k, v in context.items()}
-            return context, self.decode(context)
+            return context, self.decode(context), self.metric_fun(context)
 
         def imag_step(self, state, action):
             prior = self.wm.rssm.img_step(state, action)
-            return prior, self.decode(prior)
+            return prior, self.decode(prior), self.metric_fun(prior)
+        
+        def imag_step_agent(self, state):
+            action = self.get_action(state)
+            return self.imag_step(state, action)
 
         def decode(self, state):
             recon = self.wm.heads['decoder'](state)
@@ -66,16 +70,42 @@ class ModelWrapper:
                 result[key] = recon[key].mode()
             return result
         
+        def metric_fun(self, state):
+            reward = self.wm.heads['reward'](state).mean()
+            value = self.task_behavior.ac.critics['extr'].net(state).mean()
+            cont = self.wm.heads['cont'](state).mean()
+            return reward, value, cont
+        
+        def get_initial_state(self):
+            state, _ = self.wm.initial(1)
+            return state
+        
+        def get_action(self, state):
+            action = self.task_behavior.policy(state, None)[0]['action']
+            action = action.sample(seed=nj.rng())
+            return action
+
+
+        
         self.agent.agent.env_step = types.MethodType(env_step, self.agent.agent)
         self.agent.agent.imag_step = types.MethodType(imag_step, self.agent.agent)
+        self.agent.agent.imag_step_agent = types.MethodType(imag_step_agent, self.agent.agent)
         self.agent.agent.decode = types.MethodType(decode, self.agent.agent)
+        self.agent.agent.metric_fun = types.MethodType(metric_fun, self.agent.agent)
+        self.agent.agent.get_initial_state = types.MethodType(get_initial_state, self.agent.agent)
+        self.agent.agent.get_action = types.MethodType(get_action, self.agent.agent)
 
         kw = dict(device=self.agent.policy_devices[0])
         self._env_step = nj.pure(self.agent.agent.env_step)
         self._env_step = nj.jit(self._env_step, **kw)
         self._imag_step = nj.pure(self.agent.agent.imag_step)
         self._imag_step = nj.jit(self._imag_step, **kw)
-
+        self._imag_step_agent = nj.pure(self.agent.agent.imag_step_agent)
+        self._imag_step_agent = nj.jit(self._imag_step_agent, **kw)
+        self._get_initial_state = nj.pure(self.agent.agent.get_initial_state)
+        self._get_initial_state = nj.jit(self._get_initial_state, **kw)
+        self._get_action = nj.pure(self.agent.agent.get_action)
+        self._get_action = nj.jit(self._get_action, **kw)
         self.input_state = None
 
         self.obs = self.env.step({"action": [task_helpers.action_for_task(self.task, task_helpers.empty_key_map())], "reset": [True]})
@@ -94,31 +124,34 @@ class ModelWrapper:
                 
     #agent_policy is only available if using the env
     def step(self, action):
+        rng = self.agent._next_rngs(self.agent.policy_devices)
+        varibs = self.agent.varibs if self.agent.single_device else self.agent.policy_varibs
+        
+
         action = np.array([action])
         self.steps += 1
         if self.steps > 10:
             self.use_env = False
         
-        action_jax = self.agent._convert_inps(action, self.agent.policy_devices)
+        
         if self.input_state is None:
-            state_jax = None
+            state_jax, _ = self._get_initial_state(varibs, rng)
         else:
             state_jax = self.agent._convert_inps((self.input_state), self.agent.policy_devices)
-        rng = self.agent._next_rngs(self.agent.policy_devices)
-        varibs = self.agent.varibs if self.agent.single_device else self.agent.policy_varibs
+
+        if self.agent_policy:
+            action_jax, _ = self._get_action(varibs, rng, state_jax)
+            action = self.agent._convert_outs(action_jax, self.agent.policy_devices)
+        else:
+            action_jax = self.agent._convert_inps(action, self.agent.policy_devices)
+            
+        self.obs = self.env.step({"action": action, "reset": [False]})
+        
+
 
         if self.use_env or self.env_only:
-            if self.agent_policy:
-                outputs, self.input_state = self.agent.policy(self.obs, self.input_state, mode="eval")
-                action = outputs['action']
-            self.obs = self.env.step({"action": action, "reset": [False]})
-            reward = self.obs['reward'][0]
-            if not reward == 0.0:
+            if not self.obs['reward'][0] == 0.0:
                 print(f"Reward {self.obs['reward'][0]}")
-            if self.obs['is_terminal'][0]:
-                print("Terminal!")
-            if self.env_only: #Just using the wrapper to run the env
-                return self.obs["image"][0]
             obs_jax = self.agent._convert_inps(self.obs, self.agent.policy_devices)
             
             results, _ = self._env_step(varibs, rng, obs_jax, state_jax, action_jax)
@@ -132,4 +165,15 @@ class ModelWrapper:
         image = np.clip(image, 0, 1)
         image = (image * 255).astype(np.uint8)
 
-        return image
+        reward, value, cont = self.agent._convert_outs(results[2], self.agent.policy_devices)
+
+        metrics = {}
+        metrics["EnvReward"] = self.obs['reward'][0]
+        metrics["EnvContinue"] = not self.obs['is_terminal'][0]
+        metrics["ImagReward"] = reward[0]
+        metrics["ImagValue"] = value[0]
+        metrics["ImagContinue"] = cont[0]
+
+        env_image = self.obs["image"][0]
+
+        return env_image, image, metrics
