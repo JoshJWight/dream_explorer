@@ -14,8 +14,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str)
     parser.add_argument('--logdir', type=str)
-    parser.add_argument('--env_only', action='store_true')
-    parser.add_argument('--agent_policy', action='store_true')
     args = parser.parse_args()
 
     sizes = {}
@@ -45,7 +43,7 @@ if __name__ == '__main__':
     })
     config = embodied.Flags(config).parse(argv=[])
 
-    mywrapper = wrapper.ModelWrapper(args.logdir, args.task, config, args.env_only, args.agent_policy)
+    mywrapper = wrapper.ModelWrapper(args.logdir, args.task, config)
 
 
     win = ui.GameWindow(args.task, mywrapper)

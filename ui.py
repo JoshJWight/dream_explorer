@@ -123,6 +123,15 @@ class GameWindow(Gtk.Window):
         self.env_continue_value = Gtk.Label(label="0")
         self.metrics_grid.attach(self.env_continue_value, 1, 6, 1, 1)
 
+        self.control_labels = []
+        self.control_label_box = Gtk.VBox()
+        self.box.pack_start(self.control_label_box, True, True, 0)
+
+        for x in task_helpers.ACTION_KEYS[task]:
+            label = Gtk.Label(label=str(x))
+            self.control_label_box.pack_start(label, True, True, 0)
+            self.control_labels.append(label)
+
 
         self.task = task
         self.play = True
@@ -146,7 +155,7 @@ class GameWindow(Gtk.Window):
     def step(self):
         action = task_helpers.action_for_task(self.task, self.key_map)
 
-        env_source_image, source_image, metrics = self.wrapper.step(action)
+        env_source_image, source_image, metrics, action = self.wrapper.step(action)
         
         set_image(self.env_image, env_source_image)
         set_image(self.image, source_image)
@@ -160,6 +169,14 @@ class GameWindow(Gtk.Window):
         self.env_continue_value.set_text("{:.3f}".format(float(metrics["EnvContinue"])))
         self.total_env_reward += metrics["EnvReward"]
         self.env_total_reward_value.set_text("{:.3f}".format(self.total_env_reward))
+
+        for i, label in enumerate(self.control_labels):
+            if action[i] > 0:
+                #set color to yellow
+                label.set_markup("<span foreground='green'>%s</span>" % label.get_text())
+            else:
+                #set color to white
+                label.set_markup("<span foreground='black'>%s</span>" % label.get_text())
 
         if metrics["ImagContinue"] < 0.5 or (self.wrapper.env_only and metrics["EnvContinue"] < 0.5):
             self.play = False

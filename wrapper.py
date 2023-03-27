@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore', '.*truncated to dtype int32.*')
 
 
 class ModelWrapper:
-    def __init__(self, logdir, task, config, env_only=False, agent_policy=False):
+    def __init__(self, logdir, task, config):
         self.task = task
         logdir = embodied.Path(config.logdir)
         step = embodied.Counter()
@@ -113,8 +113,8 @@ class ModelWrapper:
         self.steps = 0
         self.use_env = True
 
-        self.env_only = env_only
-        self.agent_policy = agent_policy
+        self.env_only = False
+        self.agent_policy = False
 
     def reset(self):
         self.obs = self.env.step({"action": [task_helpers.action_for_task(self.task, task_helpers.empty_key_map())], "reset": [True]})
@@ -176,4 +176,4 @@ class ModelWrapper:
 
         env_image = self.obs["image"][0]
 
-        return env_image, image, metrics
+        return env_image, image, metrics, action[0]
