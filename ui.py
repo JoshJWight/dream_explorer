@@ -12,6 +12,8 @@ import numpy as np
 import wrapper
 import task_helpers
 
+import time
+
 def set_image(gtk_image, source_image):
     h, w, c = source_image.shape
 
@@ -132,6 +134,19 @@ class GameWindow(Gtk.Window):
             self.control_label_box.pack_start(label, True, True, 0)
             self.control_labels.append(label)
 
+        #Environment-specific controls
+        self.env_controls = Gtk.VBox()
+        self.box.pack_start(self.env_controls, True, True, 0)
+        self.env_controls.pack_start(Gtk.Label(label="Environment-specific controls"), True, True, 0)
+        if task == "mario" or task == "mario_random":
+            #Level select dropdown
+            self.level_select = Gtk.ComboBoxText()
+            self.level_select.connect("changed", self.on_level_select_changed)
+            self.env_controls.pack_start(self.level_select, True, True, 0)
+            for x in range(32):
+                self.level_select.append_text(str(x))
+        
+
 
         self.task = task
         self.play = True
@@ -145,10 +160,19 @@ class GameWindow(Gtk.Window):
         self.key_map = task_helpers.empty_key_map()
 
     def update(self):
+        start_time = time.time()
+
         if self.play:
             self.step()
         
+        elapsed_time = (time.time() - start_time) * 1000
+
         delay = 1000 / (10 ** self.framerate_slider.get_value())
+
+        #It seems we need some delay to avoid the UI freezing
+        #Maybe this could be avoided with a separate thread?
+        #However, the steps seem to take ~9ms on my pc for the xl variant on mario, so there's not much time savings anyway
+        delay = max(1, delay - elapsed_time)
 
         GObject.timeout_add(delay, self.update)
 
@@ -178,7 +202,7 @@ class GameWindow(Gtk.Window):
                 #set color to white
                 label.set_markup("<span foreground='black'>%s</span>" % label.get_text())
 
-        if metrics["ImagContinue"] < 0.5 or (self.wrapper.env_only and metrics["EnvContinue"] < 0.5):
+        if (not self.wrapper.env_only and metrics["ImagContinue"] < 0.5) or (self.wrapper.env_only and metrics["EnvContinue"] < 0.5):
             self.play = False
 
     
@@ -207,3 +231,9 @@ class GameWindow(Gtk.Window):
 
     def on_step_clicked(self, widget):
         self.step()
+
+    def on_level_select_changed(self, widget):
+        self.wrapper.set_level(int(self.level_select.get_active_text()))
+        self.play = True
+        self.total_reward = 0
+        self.total_env_reward = 0

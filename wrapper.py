@@ -12,6 +12,7 @@ warnings.filterwarnings('ignore', '.*truncated to dtype int32.*')
 class ModelWrapper:
     def __init__(self, logdir, task, config):
         self.task = task
+        self.config = config
         logdir = embodied.Path(config.logdir)
         step = embodied.Counter()
         #TODO part or all of this could be removed
@@ -121,6 +122,14 @@ class ModelWrapper:
         self.input_state = None
         self.use_env = True
         self.steps = 0
+
+    def set_level(self, level):
+        if self.task == "mario" or self.task == "mario_random":
+            self.env = task_helpers.mario_env_sequential(level)
+            self.env = dreamerv3.wrap_env(self.env, self.config)
+            self.env = embodied.BatchEnv([self.env], parallel=False)
+        else:
+            print("Level setting not supported for this task")
                 
     #agent_policy is only available if using the env
     def step(self, action):

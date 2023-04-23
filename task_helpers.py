@@ -10,6 +10,7 @@ from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
 from gym.wrappers import ResizeObservation
 
 import copy
+import random
 
 ACTION_KEYS = {}
 
@@ -54,6 +55,8 @@ def env_for_task(task):
     elif task == 'mario':
         #return mario_env()
         return mario_env_score()
+    elif task == 'mario_random':
+        return mario_env_random()
     else:
         raise NotImplementedError
     
@@ -190,6 +193,8 @@ class MarioHaltingScoreReward(gym.Wrapper):
                 self.idle_timer = 0
                 self.death_x = max(self.last_info['x_pos'], self.death_x)
 
+            #TODO slap on a patch to discourage exploitation of repeatable point sources like shells
+
             if score_reward > 0:
                 self.idle_timer = 0
 
@@ -199,6 +204,55 @@ class MarioHaltingScoreReward(gym.Wrapper):
             if done:
                 reward -= 1
         
+        self.last_info = copy.deepcopy(info)
+        return state, reward, done, info
+    
+class MarioGoRightReward(gym.Wrapper):
+    def __init__(self, env):
+        super(MarioGoRightReward, self).__init__(env)
+
+    def reset(self):
+        state = self.env.reset()
+        self.last_info = None
+        self.x_record = 0
+        self.steps_same_y = 0
+        self.jump_start = 0
+        self.jump_max = 0
+        self.steps_since_score = 0
+        return state
+
+    def step(self, action):
+        state, _, done, info = self.env.step(action)
+        reward = 0
+        if self.last_info is not None and info['x_pos'] < 20000:
+            if self.last_info['flag_get']:
+                self.x_record = info['x_pos']
+                reward += 1
+
+            if info['y_pos'] == self.last_info['y_pos']:
+                self.steps_same_y += 1
+            else:
+                self.steps_same_y = 0
+
+            if info['y_pos'] > self.jump_max:
+                self.jump_max = info['y_pos']
+
+            if info['x_pos'] > (self.x_record + 20) and self.steps_same_y >= 3:
+                reward += (info['x_pos'] - self.x_record) * (self.jump_max - self.jump_start + 1) / 1000.0
+                self.x_record = info['x_pos']
+                self.jump_start = info['y_pos']
+                self.jump_max = info['y_pos']
+                self.steps_since_score = 0
+            else:
+                self.steps_since_score += 1
+
+            if self.steps_since_score > 500:
+                reward -= 1
+            if self.steps_since_score > 600:
+                done = True
+
+            if done and not info['flag_get']:
+                reward = -1
         self.last_info = copy.deepcopy(info)
         return state, reward, done, info
     
@@ -229,6 +283,49 @@ class StickyMario(gym.Wrapper):
         state, reward, done, info = self.env.step(action)
         
         return state, reward, done, info
+    
+class SequentialMario(gym.Wrapper):
+    def __init__(self, startIdx=-1):
+        self.envs = {}
+        self.startIdx = startIdx
+        self.NUM_LEVELS = 32
+        self.go_to(startIdx)
+
+    def env_for(self, idx):
+        world = idx // 4 + 1
+        stage = idx % 4 + 1
+        envName = f'SuperMarioBros-{world}-{stage}-v0'
+        env = gym_super_mario_bros.make(envName)
+        return env
+
+    def go_to(self, idx):
+        if idx == -1:
+            idx = random.randrange(0, self.NUM_LEVELS)
+        if idx not in self.envs:
+            self.envs[idx] = self.env_for(idx)
+        self.env = self.envs[idx]
+        self.currentIdx = idx
+        return self.env.reset()
+
+    def reset(self):
+        return self.go_to(self.startIdx)    
+    
+    def step(self, action):
+        state, reward, done, info = self.env.step(action)
+
+        if info['flag_get'] and self.currentIdx+1 < self.NUM_LEVELS:
+            self.go_to(self.currentIdx + 1)
+            done = False
+
+        return state, reward, done, info
+
+    @property
+    def action_space(self):
+        return self.env.action_space
+
+    @property
+    def observation_space(self):
+        return self.env.observation_space
 
 def mario_env_score():
     env = gym_super_mario_bros.make('SuperMarioBros-v0')
@@ -237,7 +334,18 @@ def mario_env_score():
     env = StickyMario(env)
     env = ResizeObservation(env, 64)
     env = from_gym.FromGym(env)
-    return env  
+    return env
+
+def mario_env_random():
+    return mario_env_sequential(-1)
+
+def mario_env_sequential(start_level):
+    env = SequentialMario(start_level)
+    env = JoypadSpace(env, COMPLEX_MOVEMENT)
+    env = MarioGoRightReward(env)
+    env = ResizeObservation(env, 64)
+    env = from_gym.FromGym(env)
+    return env
 
 def pong_env():
     return atari.Atari("pong", gray=False, actions="needed", size=(64, 64))
@@ -283,6 +391,7 @@ ACTION_KEYS["mario"] = [[],
                         ["Left", "z", "x"],
                         ["Down"],
                         ["Up"]]
+ACTION_KEYS["mario_random"] = ACTION_KEYS["mario"]
 
 ACTION_KEYS["pong"] = [[], 
                        ["space"], 
