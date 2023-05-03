@@ -143,11 +143,13 @@ class GameWindow(Gtk.Window):
             self.level_select = Gtk.ComboBoxText()
             self.level_select.connect("changed", self.on_level_select_changed)
             self.env_controls.pack_start(self.level_select, True, True, 0)
-            for x in range(32):
-                self.level_select.append_text(str(x))
+            for world in range(1, 9):
+                for stage in range(1, 5):
+                    self.level_select.append_text("SMB1 " + str(world) + "-" + str(stage))
+            for world in range(1, 5):
+                for stage in range(1, 5):
+                    self.level_select.append_text("SMB2 " + str(world) + "-" + str(stage))
         
-
-
         self.task = task
         self.play = True
 
@@ -196,10 +198,8 @@ class GameWindow(Gtk.Window):
 
         for i, label in enumerate(self.control_labels):
             if action[i] > 0:
-                #set color to yellow
                 label.set_markup("<span foreground='green'>%s</span>" % label.get_text())
             else:
-                #set color to white
                 label.set_markup("<span foreground='black'>%s</span>" % label.get_text())
 
         if (not self.wrapper.env_only and metrics["ImagContinue"] < 0.5) or (self.wrapper.env_only and metrics["EnvContinue"] < 0.5):
@@ -233,7 +233,7 @@ class GameWindow(Gtk.Window):
         self.step()
 
     def on_level_select_changed(self, widget):
-        self.wrapper.set_level(int(self.level_select.get_active_text()))
+        self.wrapper.set_level(self.level_select.get_active())
         self.play = True
         self.total_reward = 0
         self.total_env_reward = 0
