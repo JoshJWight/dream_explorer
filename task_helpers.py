@@ -9,6 +9,8 @@ from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
 from gym.wrappers import ResizeObservation
 
 from mario import mario_helpers
+from envs.atari import AllAtari
+from envs.doom import DoomEnv
 
 ACTION_KEYS = {}
 
@@ -55,6 +57,10 @@ def env_for_task(task):
         return mario_env_score()
     elif task == 'mario_random':
         return mario_env_random()
+    elif task == 'atari':
+        return atari_env()
+    elif task == 'doom':
+        return doom_env()
     else:
         raise NotImplementedError
     
@@ -121,6 +127,18 @@ def mspacman_env():
 def skiing_env():
     return atari.Atari("skiing", gray=False, actions="needed", size=(64, 64))
 
+def atari_env(game_idx=-1):
+    env = AllAtari(game_idx)
+    env = ResizeObservation(env, 64)
+    env = from_gym.FromGym(env)
+    return env
+
+def doom_env():
+    env = DoomEnv()
+    env = ResizeObservation(env, 64)
+    env = from_gym.FromGym(env)
+    return env
+
 
 ACTION_KEYS["crafter"] = [[],
                             ["a"],
@@ -155,6 +173,7 @@ ACTION_KEYS["mario"] = [[],
                         ["Up"]]
 ACTION_KEYS["mario_random"] = ACTION_KEYS["mario"]
 
+#Full action space
 ACTION_KEYS["atari"] = [[],
                         ["space"],
                         ["Up"],
@@ -210,3 +229,12 @@ ACTION_KEYS["mspacman"] = [[],
 ACTION_KEYS["skiing"] = [[],
                          ["Right"],
                          ["Left"]]
+
+ACTION_KEYS["doom"] = [[],
+                        ["Right"],
+                        ["Left"],
+                        ["s"],
+                        ["w"],
+                        ["space"],
+                        ["d"],
+                        ["a"]]

@@ -128,6 +128,10 @@ class ModelWrapper:
             self.env = task_helpers.mario_env_sequential(level)
             self.env = dreamerv3.wrap_env(self.env, self.config)
             self.env = embodied.BatchEnv([self.env], parallel=False)
+        elif self.task == "atari":
+            self.env = task_helpers.atari_env(level)
+            self.env = dreamerv3.wrap_env(self.env, self.config)
+            self.env = embodied.BatchEnv([self.env], parallel=False)
         else:
             print("Level setting not supported for this task")
                 

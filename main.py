@@ -20,7 +20,7 @@ if __name__ == '__main__':
     for x in ['crafter', 'mspacman', 'pong', 'skiing']:
         sizes[x] = 'medium'
     
-    for x in ['mario', 'mario_random', 'seaquest']:
+    for x in ['mario', 'mario_random', 'seaquest', 'atari']:
         sizes[x] = 'xlarge'
     
     #TODO can we derive the size from the logdir?

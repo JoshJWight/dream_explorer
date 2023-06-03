@@ -14,6 +14,8 @@ import task_helpers
 
 import time
 
+from atari.all_atari_env import ATARI_GAMES
+
 def set_image(gtk_image, source_image):
     h, w, c = source_image.shape
 
@@ -23,7 +25,7 @@ def set_image(gtk_image, source_image):
 
 class GameWindow(Gtk.Window):
     def __init__(self, task, mywrapper):
-        Gtk.Window.__init__(self, title="Game Window")
+        Gtk.Window.__init__(self, title="Dream Explorer")
         self.set_default_size(800, 600)
         self.set_border_width(10)
         self.set_position(Gtk.WindowPosition.CENTER)
@@ -149,6 +151,12 @@ class GameWindow(Gtk.Window):
             for world in range(1, 5):
                 for stage in range(1, 5):
                     self.level_select.append_text("SMB2 " + str(world) + "-" + str(stage))
+        elif task == "atari":
+            self.level_select = Gtk.ComboBoxText()
+            self.level_select.connect("changed", self.on_level_select_changed)
+            self.env_controls.pack_start(self.level_select, True, True, 0)
+            for game in ATARI_GAMES:
+                self.level_select.append_text(game)
         
         self.task = task
         self.play = True
