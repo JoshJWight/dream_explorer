@@ -16,11 +16,15 @@ if __name__ == '__main__':
     parser.add_argument('--logdir', type=str)
     args = parser.parse_args()
 
+    if args.task is None or args.logdir is None:
+        print("Usage: main.py --task <taskname> --logdir <logdir>")
+        exit(1)
+
     sizes = {}
     for x in ['crafter', 'mspacman', 'pong', 'skiing']:
         sizes[x] = 'medium'
     
-    for x in ['mario', 'mario_random', 'seaquest', 'atari', 'doom']:
+    for x in ['mario', 'mario_random', 'seaquest', 'atari', 'doom', 'spelunky']:
         sizes[x] = 'xlarge'
     
     #TODO can we derive the size from the logdir?
@@ -31,15 +35,6 @@ if __name__ == '__main__':
     config = config.update(dreamerv3.configs[sizes[args.task]])
     config = config.update({
         'logdir': args.logdir,
-        'run.train_ratio': 64,
-        'run.log_every': 30,  # Seconds
-        'batch_size': 16,
-        'jax.prealloc': False,
-        'encoder.mlp_keys': '$^',
-        'decoder.mlp_keys': '$^',
-        'encoder.cnn_keys': 'image',
-        'decoder.cnn_keys': 'image',
-        # 'jax.platform': 'cpu',
     })
     config = embodied.Flags(config).parse(argv=[])
 

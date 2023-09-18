@@ -15,14 +15,6 @@ class ModelWrapper:
         self.config = config
         logdir = embodied.Path(config.logdir)
         step = embodied.Counter()
-        #TODO part or all of this could be removed
-        logger = embodied.Logger(step, [
-            embodied.logger.TerminalOutput(),
-            embodied.logger.JSONLOutput(logdir, 'metrics.jsonl'),
-            embodied.logger.TensorBoardOutput(logdir),
-            # embodied.logger.WandBOutput(logdir.name, config),
-            # embodied.logger.MLFlowOutput(logdir.name),
-        ])
 
         self.env = task_helpers.env_for_task(task)
         self.env = dreamerv3.wrap_env(self.env, config)
@@ -35,7 +27,6 @@ class ModelWrapper:
             **config.run, logdir=config.logdir,
             batch_steps=config.batch_size * config.batch_length)
         
-        step = logger.step
         checkpoint = embodied.Checkpoint(logdir / 'checkpoint.ckpt')
         checkpoint.step = step
         checkpoint.agent = self.agent
@@ -53,7 +44,6 @@ class ModelWrapper:
             embed = self.wm.encoder(obs)
             context, _ = self.wm.rssm.obs_step(
                 state, action, embed, obs['is_first'])
-            #latentb = {k: jnp.expand_dims(v, 0) for k, v in context.items()}
             return context, self.decode(context), self.metric_fun(context)
 
         def imag_step(self, state, action):
