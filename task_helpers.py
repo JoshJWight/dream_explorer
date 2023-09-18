@@ -10,7 +10,7 @@ from gym.wrappers import ResizeObservation
 
 from mario import mario_helpers
 from envs.atari import AllAtari
-from envs.doom import DoomEnv
+from envs.doom import MultiDoom
 
 ACTION_KEYS = {}
 
@@ -133,8 +133,8 @@ def atari_env(game_idx=-1):
     env = from_gym.FromGym(env)
     return env
 
-def doom_env():
-    env = DoomEnv()
+def doom_env(env_idx=-1):
+    env = MultiDoom(env_idx)
     env = ResizeObservation(env, 64)
     env = from_gym.FromGym(env)
     return env
@@ -231,10 +231,10 @@ ACTION_KEYS["skiing"] = [[],
                          ["Left"]]
 
 ACTION_KEYS["doom"] = [[],
-                        ["Right"],
-                        ["Left"],
-                        ["s"],
-                        ["w"],
-                        ["space"],
+                        ["a"],
                         ["d"],
-                        ["a"]]
+                        ["space"],
+                        ["w"],
+                        ["s"],
+                        ["Left"],
+                        ["Right"]]

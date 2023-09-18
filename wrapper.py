@@ -126,14 +126,15 @@ class ModelWrapper:
     def set_level(self, level):
         if self.task == "mario" or self.task == "mario_random":
             self.env = task_helpers.mario_env_sequential(level)
-            self.env = dreamerv3.wrap_env(self.env, self.config)
-            self.env = embodied.BatchEnv([self.env], parallel=False)
         elif self.task == "atari":
             self.env = task_helpers.atari_env(level)
-            self.env = dreamerv3.wrap_env(self.env, self.config)
-            self.env = embodied.BatchEnv([self.env], parallel=False)
+        elif self.task == "doom":
+            self.env = task_helpers.doom_env(level)
         else:
             print("Level setting not supported for this task")
+            return
+        self.env = dreamerv3.wrap_env(self.env, self.config)
+        self.env = embodied.BatchEnv([self.env], parallel=False)
                 
     #agent_policy is only available if using the env
     def step(self, action):

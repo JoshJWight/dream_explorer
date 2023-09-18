@@ -14,7 +14,8 @@ import task_helpers
 
 import time
 
-from atari.all_atari_env import ATARI_GAMES
+from envs.atari import ATARI_GAMES
+from envs.doom import DOOM_ENVS
 
 def set_image(gtk_image, source_image):
     h, w, c = source_image.shape
@@ -140,10 +141,12 @@ class GameWindow(Gtk.Window):
         self.env_controls = Gtk.VBox()
         self.box.pack_start(self.env_controls, True, True, 0)
         self.env_controls.pack_start(Gtk.Label(label="Environment-specific controls"), True, True, 0)
+        
+        #Level select dropdown
+        self.level_select = Gtk.ComboBoxText()
+        self.level_select.connect("changed", self.on_level_select_changed)
+        self.env_controls.pack_start(self.level_select, True, True, 0)
         if task == "mario" or task == "mario_random":
-            #Level select dropdown
-            self.level_select = Gtk.ComboBoxText()
-            self.level_select.connect("changed", self.on_level_select_changed)
             self.env_controls.pack_start(self.level_select, True, True, 0)
             for world in range(1, 9):
                 for stage in range(1, 5):
@@ -152,11 +155,12 @@ class GameWindow(Gtk.Window):
                 for stage in range(1, 5):
                     self.level_select.append_text("SMB2 " + str(world) + "-" + str(stage))
         elif task == "atari":
-            self.level_select = Gtk.ComboBoxText()
-            self.level_select.connect("changed", self.on_level_select_changed)
-            self.env_controls.pack_start(self.level_select, True, True, 0)
             for game in ATARI_GAMES:
                 self.level_select.append_text(game)
+        elif task == "doom":
+            for env in DOOM_ENVS:
+                self.level_select.append_text(env)
+
         
         self.task = task
         self.play = True
@@ -217,10 +221,12 @@ class GameWindow(Gtk.Window):
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
         self.key_map[keyname] = True
+        return True #stop other handlers from being invoked
     
     def on_key_release_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
         self.key_map[keyname] = False
+        return True #stop other handlers from being invoked
 
     def on_reset_clicked(self, widget):
         self.play = True
