@@ -1,5 +1,5 @@
-import module
-from mario_env import SequentialMario, MarioGoRightReward
+from .. import module
+from .mario_env import SequentialMario, MarioGoRightReward
 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
 from nes_py.wrappers import JoypadSpace
 from gym.wrappers import ResizeObservation

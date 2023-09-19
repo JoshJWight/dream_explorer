@@ -3,16 +3,17 @@ import warnings
 import dreamerv3
 from dreamerv3 import embodied
 import dreamerv3.ninjax as nj
-import dream_explorer.task_helpers as task_helpers
 import types
+
+from .modules import module
 warnings.filterwarnings('ignore', '.*truncated to dtype int32.*')
 
 
 
 class ModelWrapper:
-    def __init__(self, module, config):
+    def __init__(self, my_module, config):
         self.config = config
-        self.module = module
+        self.module = my_module
         logdir = embodied.Path(config.logdir)
         step = embodied.Counter()
 
@@ -99,7 +100,7 @@ class ModelWrapper:
         self._get_action = nj.jit(self._get_action, **kw)
         self.input_state = None
 
-        self.obs = self.env.step({"action": [task_helpers.action_for_task(self.task, task_helpers.empty_key_map())], "reset": [True]})
+        self.obs = self.env.step({"action": [self.module.action_for_keys(module.empty_key_map())], "reset": [True]})
 
         self.steps = 0
         self.use_env = True
@@ -108,7 +109,7 @@ class ModelWrapper:
         self.agent_policy = False
 
     def reset(self):
-        self.obs = self.env.step({"action": [task_helpers.action_for_task(self.task, task_helpers.empty_key_map())], "reset": [True]})
+        self.obs = self.env.step({"action": [self.module.action_for_keys(module.empty_key_map())], "reset": [True]})
         self.input_state = None
         self.use_env = True
         self.steps = 0

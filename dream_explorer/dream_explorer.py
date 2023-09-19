@@ -19,7 +19,7 @@ def run(module, logdir):
     })
     config = embodied.Flags(config).parse(argv=[])
 
-    mywrapper = wrapper.ModelWrapper(logdir, module, config)
+    mywrapper = wrapper.ModelWrapper(module, config)
 
 
     win = ui.GameWindow(module, mywrapper)

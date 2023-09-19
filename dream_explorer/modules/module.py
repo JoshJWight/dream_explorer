@@ -1,5 +1,6 @@
-#Template for modules
+import numpy as np
 
+#Template for modules
 class Module:
     def __init__(self):
         pass
@@ -24,6 +25,25 @@ class Module:
     #Should return a list of lists of keys associated with each action
     def action_keys(self):
         return []
+    
+
+
+
+    #Does not need to be overridden
+    #Note: this produces a one-hot vector of the action
+    def action_for_keys(self, key_map):
+        task_keys = self.action_keys()
+        action = np.zeros(len(task_keys))
+        #Find the longest key combination that is pressed
+        best_index = 0 
+        best_len = 0
+        for i in range(len(task_keys)):
+            if all(key_map[key] for key in task_keys[i]):
+                if len(task_keys[i]) > best_len:
+                    best_index = i
+                    best_len = len(task_keys[i])
+        action[best_index] = 1
+        return action
 
 #Helper functions
 def empty_key_map():
@@ -55,16 +75,3 @@ def empty_key_map():
         "Z": False,
     }
     
-def action_for_task(module, key_map):
-    task_keys = module.action_keys()
-    action = np.zeros(len(task_keys))
-    #Find the longest key combination that is pressed
-    best_index = 0 
-    best_len = 0
-    for i in range(len(task_keys)):
-        if all(key_map[key] for key in task_keys[i]):
-            if len(task_keys[i]) > best_len:
-                best_index = i
-                best_len = len(task_keys[i])
-    action[best_index] = 1
-    return action

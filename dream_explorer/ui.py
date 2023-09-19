@@ -9,9 +9,7 @@ from gi.repository import Gdk
 
 import numpy as np
 
-import dream_explorer.wrapper as wrapper
-
-import dream_explorer.task_helpers as task_helpers
+from .modules import module
 
 import time
 
@@ -23,8 +21,8 @@ def set_image(gtk_image, source_image):
     gtk_image.set_from_pixbuf(image)
 
 class GameWindow(Gtk.Window):
-    def __init__(self, module, mywrapper):
-        self.module = module
+    def __init__(self, my_module, mywrapper):
+        self.module = my_module
         self.wrapper = mywrapper
 
         Gtk.Window.__init__(self, title="Dream Explorer")
@@ -133,7 +131,7 @@ class GameWindow(Gtk.Window):
         self.control_label_box = Gtk.VBox()
         self.box.pack_start(self.control_label_box, True, True, 0)
 
-        for x in module.action_keys():
+        for x in self.module.action_keys():
             label = Gtk.Label(label=str(x))
             self.control_label_box.pack_start(label, True, True, 0)
             self.control_labels.append(label)
@@ -149,7 +147,7 @@ class GameWindow(Gtk.Window):
         self.env_controls.pack_start(self.level_select, True, True, 0)
 
         #Add levels to dropdown
-        for level in module.levels():
+        for level in self.module.levels():
             self.level_select.append_text(level)
 
         self.play = True
@@ -160,7 +158,7 @@ class GameWindow(Gtk.Window):
 
         GObject.timeout_add(50, self.update)
 
-        self.key_map = task_helpers.empty_key_map()
+        self.key_map = module.empty_key_map()
 
     def update(self):
         start_time = time.time()
@@ -180,7 +178,7 @@ class GameWindow(Gtk.Window):
         GObject.timeout_add(delay, self.update)
 
     def step(self):
-        action = task_helpers.action_for_task(self.module, self.key_map)
+        action = self.module.action_for_keys(self.key_map)
 
         env_source_image, source_image, metrics, action = self.wrapper.step(action)
         

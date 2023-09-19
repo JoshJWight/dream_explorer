@@ -1,10 +1,9 @@
-#Template for modules
-
-from doom_env import MultiDoom, DOOM_ENVS
+from .. import module
+from .doom_env import MultiDoom, DOOM_ENVS
 from gym.wrappers import ResizeObservation
 from dreamerv3.embodied.envs import from_gym
 
-class DoomModule:
+class DoomModule(module.Module):
     def __init__(self):
         pass
 
@@ -12,7 +11,7 @@ class DoomModule:
         return DOOM_ENVS
     
     def create_env(self):
-        pass
+        return self.set_level(-1)
 
     def set_level(self, level):
         env = MultiDoom(level)

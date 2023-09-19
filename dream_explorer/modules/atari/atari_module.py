@@ -1,8 +1,9 @@
-from atari_env import AllAtari
+from .. import module
+from .atari_env import AllAtari
 from gym.wrappers import ResizeObservation
 from dreamerv3.embodied.envs import from_gym
 
-class AtariModule:
+class AtariModule(module.Module):
     def __init__(self):
         pass
 
