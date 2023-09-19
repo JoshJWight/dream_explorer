@@ -6,8 +6,8 @@ from gi.repository import Gtk
 import dreamerv3
 import dreamerv3.embodied as embodied
 
-import wrapper
-import ui
+import dream_explorer.wrapper as wrapper
+import dream_explorer.ui as ui
 
 def run(module, logdir):
 
@@ -19,10 +19,10 @@ def run(module, logdir):
     })
     config = embodied.Flags(config).parse(argv=[])
 
-    mywrapper = wrapper.ModelWrapper(args.logdir, args.task, config)
+    mywrapper = wrapper.ModelWrapper(logdir, module, config)
 
 
-    win = ui.GameWindow(args.task, mywrapper)
+    win = ui.GameWindow(module, mywrapper)
     win.connect("destroy", Gtk.main_quit)
     win.show_all()
     Gtk.main()

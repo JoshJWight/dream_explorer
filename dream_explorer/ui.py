@@ -9,13 +9,11 @@ from gi.repository import Gdk
 
 import numpy as np
 
-import wrapper
-import task_helpers
+import dream_explorer.wrapper as wrapper
+
+import dream_explorer.task_helpers as task_helpers
 
 import time
-
-from envs.atari import ATARI_GAMES
-from envs.doom import DOOM_ENVS
 
 def set_image(gtk_image, source_image):
     h, w, c = source_image.shape
@@ -25,7 +23,10 @@ def set_image(gtk_image, source_image):
     gtk_image.set_from_pixbuf(image)
 
 class GameWindow(Gtk.Window):
-    def __init__(self, task, mywrapper):
+    def __init__(self, module, mywrapper):
+        self.module = module
+        self.wrapper = mywrapper
+
         Gtk.Window.__init__(self, title="Dream Explorer")
         self.set_default_size(800, 600)
         self.set_border_width(10)
@@ -132,7 +133,7 @@ class GameWindow(Gtk.Window):
         self.control_label_box = Gtk.VBox()
         self.box.pack_start(self.control_label_box, True, True, 0)
 
-        for x in task_helpers.ACTION_KEYS[task]:
+        for x in module.action_keys():
             label = Gtk.Label(label=str(x))
             self.control_label_box.pack_start(label, True, True, 0)
             self.control_labels.append(label)
@@ -146,29 +147,17 @@ class GameWindow(Gtk.Window):
         self.level_select = Gtk.ComboBoxText()
         self.level_select.connect("changed", self.on_level_select_changed)
         self.env_controls.pack_start(self.level_select, True, True, 0)
-        if task == "mario" or task == "mario_random":
-            self.env_controls.pack_start(self.level_select, True, True, 0)
-            for world in range(1, 9):
-                for stage in range(1, 5):
-                    self.level_select.append_text("SMB1 " + str(world) + "-" + str(stage))
-            for world in range(1, 5):
-                for stage in range(1, 5):
-                    self.level_select.append_text("SMB2 " + str(world) + "-" + str(stage))
-        elif task == "atari":
-            for game in ATARI_GAMES:
-                self.level_select.append_text(game)
-        elif task == "doom":
-            for env in DOOM_ENVS:
-                self.level_select.append_text(env)
 
-        
-        self.task = task
+        #Add levels to dropdown
+        for level in module.levels():
+            self.level_select.append_text(level)
+
         self.play = True
 
         self.total_reward = 0
         self.total_env_reward = 0
         
-        self.wrapper = mywrapper
+
         GObject.timeout_add(50, self.update)
 
         self.key_map = task_helpers.empty_key_map()
@@ -191,7 +180,7 @@ class GameWindow(Gtk.Window):
         GObject.timeout_add(delay, self.update)
 
     def step(self):
-        action = task_helpers.action_for_task(self.task, self.key_map)
+        action = task_helpers.action_for_task(self.module, self.key_map)
 
         env_source_image, source_image, metrics, action = self.wrapper.step(action)
         

@@ -3,7 +3,7 @@ import gym_super_mario_bros
 import copy
 import random
 
-from mario.register_mario2 import registerMario2
+from register_mario2 import registerMario2
 
 class MarioIdlePenaltyReward(gym.Wrapper):
     def __init__(self, env):

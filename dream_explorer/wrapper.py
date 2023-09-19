@@ -3,20 +3,20 @@ import warnings
 import dreamerv3
 from dreamerv3 import embodied
 import dreamerv3.ninjax as nj
-import task_helpers
+import dream_explorer.task_helpers as task_helpers
 import types
 warnings.filterwarnings('ignore', '.*truncated to dtype int32.*')
 
 
 
 class ModelWrapper:
-    def __init__(self, logdir, task, config):
-        self.task = task
+    def __init__(self, module, config):
         self.config = config
+        self.module = module
         logdir = embodied.Path(config.logdir)
         step = embodied.Counter()
 
-        self.env = task_helpers.env_for_task(task)
+        self.env = self.module.create_env()
         self.env = dreamerv3.wrap_env(self.env, config)
         self.env = embodied.BatchEnv([self.env], parallel=False)
 
@@ -114,15 +114,7 @@ class ModelWrapper:
         self.steps = 0
 
     def set_level(self, level):
-        if self.task == "mario" or self.task == "mario_random":
-            self.env = task_helpers.mario_env_sequential(level)
-        elif self.task == "atari":
-            self.env = task_helpers.atari_env(level)
-        elif self.task == "doom":
-            self.env = task_helpers.doom_env(level)
-        else:
-            print("Level setting not supported for this task")
-            return
+        self.env = self.module.set_level(level)
         self.env = dreamerv3.wrap_env(self.env, self.config)
         self.env = embodied.BatchEnv([self.env], parallel=False)
                 

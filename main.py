@@ -6,8 +6,8 @@ from gi.repository import Gtk
 import dreamerv3
 import dreamerv3.embodied as embodied
 
-import wrapper
-import ui
+import dream_explorer.wrapper as wrapper
+import dream_explorer.ui as ui
 
 if __name__ == '__main__':
     import argparse
