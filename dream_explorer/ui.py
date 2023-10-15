@@ -13,6 +13,8 @@ from .modules import module
 
 import time
 
+import collections
+
 def set_image(gtk_image, source_image):
     h, w, c = source_image.shape
 
@@ -126,15 +128,29 @@ class GameWindow(Gtk.Window):
         self.metrics_grid.attach(self.env_continue_label, 0, 6, 1, 1)
         self.env_continue_value = Gtk.Label(label="0")
         self.metrics_grid.attach(self.env_continue_value, 1, 6, 1, 1)
+        #FPS
+        self.fps_label = Gtk.Label(label="FPS")
+        self.metrics_grid.attach(self.fps_label, 0, 7, 1, 1)
+        self.fps_value = Gtk.Label(label="0")
+        self.metrics_grid.attach(self.fps_value, 1, 7, 1, 1)
 
         self.control_labels = []
-        self.control_label_box = Gtk.VBox()
-        self.box.pack_start(self.control_label_box, True, True, 0)
+        self.control_counters = []
+        self.control_use_counts = np.zeros(len(self.module.action_keys()))
+        self.control_label_grid = Gtk.Grid()
+        self.box.pack_start(self.control_label_grid, True, True, 0)
 
-        for x in self.module.action_keys():
+        for i, x in enumerate(self.module.action_keys()):
             label = Gtk.Label(label=str(x))
-            self.control_label_box.pack_start(label, True, True, 0)
             self.control_labels.append(label)
+            counter = Gtk.LevelBar()
+            counter.set_min_value(0)
+            counter.set_max_value(1)
+            counter.set_value(0)
+            counter.set_size_request(50, 10)
+            self.control_counters.append(counter)
+            self.control_label_grid.attach(label, 0, i, 1, 1)
+            self.control_label_grid.attach(counter, 1, i, 1, 1)
 
         #Environment-specific controls
         self.env_controls = Gtk.VBox()
@@ -155,6 +171,7 @@ class GameWindow(Gtk.Window):
         self.total_reward = 0
         self.total_env_reward = 0
         
+        self.frame_times_ms = collections.deque(maxlen=100)
 
         GObject.timeout_add(50, self.update)
 
@@ -175,6 +192,8 @@ class GameWindow(Gtk.Window):
         #However, the steps seem to take ~9ms on my pc for the xl variant on mario, so there's not much time savings anyway
         delay = max(1, delay - elapsed_time)
 
+        self.frame_times_ms.append(elapsed_time + delay)
+
         GObject.timeout_add(delay, self.update)
 
     def step(self):
@@ -194,12 +213,18 @@ class GameWindow(Gtk.Window):
         self.env_continue_value.set_text("{:.3f}".format(float(metrics["EnvContinue"])))
         self.total_env_reward += metrics["EnvReward"]
         self.env_total_reward_value.set_text("{:.3f}".format(self.total_env_reward))
+        self.fps_value.set_text("{:.3f}".format(1000 / np.mean(self.frame_times_ms)))
+
+        self.control_use_counts += action
 
         for i, label in enumerate(self.control_labels):
             if action[i] > 0:
                 label.set_markup("<span foreground='green'>%s</span>" % label.get_text())
             else:
                 label.set_markup("<span foreground='black'>%s</span>" % label.get_text())
+
+            counter_val = self.control_use_counts[i] / np.max(self.control_use_counts)
+            self.control_counters[i].set_value(counter_val)
 
         if (not self.wrapper.env_only and metrics["ImagContinue"] < 0.5) or (self.wrapper.env_only and metrics["EnvContinue"] < 0.5):
             self.play = False
@@ -220,6 +245,7 @@ class GameWindow(Gtk.Window):
         self.total_reward = 0
         self.total_env_reward = 0
         self.wrapper.reset()
+        self.control_use_counts = np.zeros(len(self.module.action_keys()))
 
     def on_agent_policy_toggled(self, widget):
         self.wrapper.agent_policy = self.agent_policy_checkbox.get_active()
@@ -238,3 +264,4 @@ class GameWindow(Gtk.Window):
         self.play = True
         self.total_reward = 0
         self.total_env_reward = 0
+        self.control_use_counts = np.zeros(len(self.module.action_keys()))
